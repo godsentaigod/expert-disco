@@ -3,6 +3,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -30,6 +31,26 @@ interface AgentStatus {
 }
 
 export default function AgentCommandCenter() {
+  const [, setLocation] = useLocation();
+  const { data: user, isLoading: userLoading } = trpc.auth.me.useQuery();
+
+  // Redirect non-admin users
+  if (!userLoading && user?.role !== "admin") {
+    setLocation("/");
+    return null;
+  }
+
+  if (userLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome-1",
@@ -147,53 +168,16 @@ export default function AgentCommandCenter() {
         responseContent = `**Sales Agent Report:**\n\nLead Identification & Qualification:\n- Identified 47 high-quality leads\n- 12 leads with qualification score > 0.85\n- Generated personalized outreach for top 5 leads\n\nPipeline Status:\n- Total Leads: 127\n- Conversion Rate: 8.2%\n- Average Deal Size: $12,500\n- Expected Monthly Revenue: $52,000\n\nNext Steps: Initiating outreach sequence for qualified leads.`;
       } else if (
         input.toLowerCase().includes("workflow") ||
-        input.toLowerCase().includes("automate") ||
-        input.toLowerCase().includes("process")
+        input.toLowerCase().includes("automate")
       ) {
         agentRole = "operations";
-        responseContent = `**Operations Agent Report:**\n\nWorkflow Automation Summary:\n- Created "Content Publishing Pipeline" workflow\n- Automated 5 key steps\n- Estimated time savings: 15 hours/week\n\nCurrent Automations:\n- Content creation → Review → Scheduling\n- Lead qualification → Scoring → Routing\n- Customer onboarding → Email sequence → Follow-up\n\nPerformance Metrics:\n- Tasks Automated: 42\n- Time Saved This Week: 18 hours\n- Efficiency Improvement: 73%`;
-      } else if (
-        input.toLowerCase().includes("market") ||
-        input.toLowerCase().includes("strategy") ||
-        input.toLowerCase().includes("competitor")
-      ) {
-        agentRole = "strategy";
-        responseContent = `**Strategy Agent Report:**\n\nMarket Analysis:\n- Market Size: $2.5B\n- Growth Rate: 24% YoY\n- Top Opportunities: Enterprise automation ($1.2B market)\n\nCompetitive Landscape:\n- 3 major competitors identified\n- Our competitive advantages: Superior AI, Better customization, Lower pricing\n- Market share opportunity: 8-12% within 18 months\n\nStrategic Recommendations:\n1. Accelerate product innovation\n2. Expand enterprise sales efforts\n3. Build strategic partnerships\n4. Invest in customer success`;
-      } else if (
-        input.toLowerCase().includes("model") ||
-        input.toLowerCase().includes("code") ||
-        input.toLowerCase().includes("update")
-      ) {
-        agentRole = "advanced-coder";
-        responseContent = `**Advanced Coder Report:**\n\nPlatform Maintenance:\n- Deployed v2.1.0 with performance improvements\n- Fixed 4 critical bugs\n- Test coverage: 92%\n\nModel Configuration:\n- Configured 3 AI models (text-generation, classification, analytics)\n- Performance optimization: 67% latency reduction\n- Model accuracy: 94.2%\n\nDependency Updates:\n- 12 outdated packages identified\n- All updates low-risk\n- Security vulnerabilities: 0`;
-      } else if (
-        input.toLowerCase().includes("integration") ||
-        input.toLowerCase().includes("form") ||
-        input.toLowerCase().includes("customize")
-      ) {
-        agentRole = "platform-architect";
-        responseContent = `**Platform Architect Report:**\n\nIntegrations Configured:\n- Stripe (Payments)\n- SendGrid (Email)\n- Slack (Notifications)\n- Twitter (Social Media)\n- HuggingFace (AI Models)\n\nCustomizations Created:\n- Custom sales dashboard\n- Lead qualification workflow\n- Email campaign automation\n\nForms Created:\n- Customer feedback form\n- Product survey\n- Lead qualification form\n\nSystem Architecture:\n- Current capacity: 10K concurrent users\n- Scalability: Horizontal scaling ready\n- Uptime: 99.9%`;
+        responseContent = `**Operations Agent Report:**\n\nWorkflow Automation Status:\n- Created 3 new automation workflows\n- Estimated time savings: 25 hours/week\n- Automation coverage: 78% of routine tasks\n\nActive Workflows:\n1. Content Publishing Pipeline - 65% complete\n2. Lead Qualification - 42% complete\n3. Customer Onboarding - 100% complete\n\nNext: Implementing advanced error handling and notifications.`;
       } else {
-        responseContent = `I understand you're asking about: "${input}"\n\nI can help you with:\n- **Trends & Opportunities**: Ask me about current market trends or viral opportunities\n- **Content Creation**: Request blog posts, social media content, or email campaigns\n- **Sales & Leads**: Get help with lead generation and sales pipeline management\n- **Automation**: Create and manage business workflows\n- **Strategy**: Get market analysis and business intelligence\n- **Technical**: Request platform updates or model configuration\n- **Integrations**: Set up new integrations or customize the platform\n\nWhich area would you like to focus on?`;
+        responseContent = `**Management Agent Response:**\n\nI've processed your request. Here's what I can help you with:\n\n✓ Generate content and marketing materials\n✓ Analyze trends and market opportunities\n✓ Identify and qualify sales leads\n✓ Automate business workflows\n✓ Provide strategic business insights\n✓ Maintain and optimize the platform\n✓ Manage integrations and customizations\n\nPlease specify what you'd like me to do, and I'll route it to the appropriate agent.`;
       }
 
-      // Simulate agent status update
-      setAgentStatuses((prev) =>
-        prev.map((agent) => {
-          if (agent.role === agentRole) {
-            return {
-              ...agent,
-              status: "idle",
-              lastActive: new Date(),
-              tasksCompleted: agent.tasksCompleted + 1,
-            };
-          }
-          return agent;
-        })
-      );
-
       const agentMessage: ChatMessage = {
-        id: `msg-${Date.now()}-response`,
+        id: `msg-${Date.now()}`,
         role: "agent",
         agentRole,
         content: responseContent,
@@ -201,182 +185,128 @@ export default function AgentCommandCenter() {
       };
 
       setMessages((prev) => [...prev, agentMessage]);
-    } catch (error) {
-      console.error("Error sending message:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "idle":
-        return "bg-green-100 text-green-800";
-      case "working":
-        return "bg-blue-100 text-blue-800";
-      case "waiting":
-        return "bg-yellow-100 text-yellow-800";
-      case "error":
-        return "bg-red-100 text-red-800";
-      case "offline":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-rose-50">
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-amber-900 mb-2">
-            Vibe Coding Command Center
-          </h1>
-          <p className="text-amber-700">
-            Autonomous AI workforce orchestration platform
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Chat Area */}
-          <div className="lg:col-span-2">
-            <Card className="h-[600px] flex flex-col border-amber-200 bg-white/80 backdrop-blur">
-              {/* Messages */}
-              <ScrollArea className="flex-1 p-6 border-b border-amber-100">
-                <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${
-                        message.role === "user" ? "justify-end" : "justify-start"
-                      }`}
-                    >
-                      <div
-                        className={`max-w-md px-4 py-3 rounded-lg ${
-                          message.role === "user"
-                            ? "bg-amber-600 text-white rounded-br-none"
-                            : "bg-amber-100 text-amber-900 rounded-bl-none"
-                        }`}
-                      >
-                        {message.agentRole && message.role === "agent" && (
-                          <p className="text-xs font-semibold mb-1 opacity-70">
-                            {message.agentRole.replace("-", " ").toUpperCase()}
-                          </p>
-                        )}
-                        <Streamdown>{message.content}</Streamdown>
-                        <p className="text-xs opacity-50 mt-2">
-                          {message.timestamp.toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-amber-100 text-amber-900 px-4 py-3 rounded-lg rounded-bl-none flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Processing your request...</span>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={scrollRef} />
-                </div>
-              </ScrollArea>
-
-              {/* Input Area */}
-              <div className="p-4 border-t border-amber-100">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Describe what you need... (e.g., 'Generate a blog post about AI')"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter" && !isLoading) {
-                        handleSendMessage();
-                      }
-                    }}
-                    disabled={isLoading}
-                    className="border-amber-200 focus:border-amber-600"
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !input.trim()}
-                    className="bg-amber-600 hover:bg-amber-700 text-white"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <div className="border-b border-border bg-card sticky top-0 z-40">
+        <div className="container py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Command Center</h1>
+            <p className="text-sm text-muted-foreground">Natural language interface for AI agents</p>
           </div>
+          <div className="flex items-center gap-2">
+            {agentStatuses.slice(0, 3).map((agent) => (
+              <Badge key={agent.role} variant="outline" className="text-xs">
+                <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                {agent.role}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </div>
 
-          {/* Agent Status Sidebar */}
-          <div className="space-y-4">
-            <Card className="border-amber-200 bg-white/80 backdrop-blur p-4">
-              <h2 className="font-bold text-amber-900 mb-4 flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Agent Status
-              </h2>
-              <div className="space-y-3">
-                {agentStatuses.map((agent) => (
+      {/* Main Chat Area */}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Chat Messages */}
+        <div className="flex-1 flex flex-col">
+          <ScrollArea className="flex-1 p-6">
+            <div className="space-y-4 max-w-3xl mx-auto">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
                   <div
-                    key={agent.role}
-                    className="p-3 bg-amber-50 rounded-lg border border-amber-100"
+                    className={`max-w-xl px-4 py-3 rounded-lg ${
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card border border-border text-foreground"
+                    }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-amber-900 capitalize">
-                        {agent.role.replace("-", " ")}
-                      </span>
-                      <Badge className={getStatusColor(agent.status)}>
-                        {agent.status}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-amber-700 space-y-1">
-                      <p>Tasks: {agent.tasksCompleted}</p>
-                      <p>Errors: {agent.tasksFailed}</p>
+                    {message.agentRole && (
+                      <div className="text-xs font-semibold mb-2 opacity-75">
+                        {message.agentRole.toUpperCase()}
+                      </div>
+                    )}
+                    <Streamdown>{message.content}</Streamdown>
+                    <div className="text-xs opacity-50 mt-2">
+                      {message.timestamp.toLocaleTimeString()}
                     </div>
                   </div>
-                ))}
-              </div>
-            </Card>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-card border border-border text-foreground px-4 py-3 rounded-lg">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  </div>
+                </div>
+              )}
+              <div ref={scrollRef} />
+            </div>
+          </ScrollArea>
 
-            {/* Quick Actions */}
-            <Card className="border-amber-200 bg-white/80 backdrop-blur p-4">
-              <h2 className="font-bold text-amber-900 mb-4 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                Quick Actions
-              </h2>
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start border-amber-200 text-amber-900 hover:bg-amber-50"
-                  onClick={() => setInput("What are the current trends?")}
-                >
-                  📊 View Trends
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start border-amber-200 text-amber-900 hover:bg-amber-50"
-                  onClick={() => setInput("Generate a blog post")}
-                >
-                  ✍️ Create Content
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start border-amber-200 text-amber-900 hover:bg-amber-50"
-                  onClick={() => setInput("Identify leads")}
-                >
-                  👥 Find Leads
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start border-amber-200 text-amber-900 hover:bg-amber-50"
-                  onClick={() => setInput("Create automation")}
-                >
-                  ⚙️ Automate
-                </Button>
-              </div>
-            </Card>
+          {/* Input Area */}
+          <div className="border-t border-border bg-card p-6">
+            <div className="max-w-3xl mx-auto flex gap-2">
+              <Input
+                placeholder="Tell me what you need... (e.g., 'Generate a blog post', 'Identify leads', 'What are the trends?')"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={isLoading || !input.trim()}
+                size="lg"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Agent Status Sidebar */}
+        <div className="w-80 border-l border-border bg-card/50 p-6 overflow-y-auto hidden lg:block">
+          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Agent Status
+          </h3>
+          <div className="space-y-3">
+            {agentStatuses.map((agent) => (
+              <Card key={agent.role} className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-foreground capitalize">
+                    {agent.role.replace("-", " ")}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="text-xs"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                    {agent.status}
+                  </Badge>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div>Completed: {agent.tasksCompleted}</div>
+                  <div>Failed: {agent.tasksFailed}</div>
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
       </div>

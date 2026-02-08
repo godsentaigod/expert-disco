@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,9 +7,26 @@ import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
+  const [, setLocation] = useLocation();
+  const { data: user } = trpc.auth.me.useQuery();
   const { data: products, isLoading } = trpc.products.list.useQuery();
 
   const featuredProducts = products?.slice(0, 3) || [];
+
+  // Covert keyboard shortcut: Ctrl+Shift+A to access command center
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "A") {
+        e.preventDefault();
+        if (user?.role === "admin") {
+          setLocation("/command-center");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [user, setLocation]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -147,6 +165,22 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      {/* Covert Admin Access - Hidden buttons visible on hover */}
+      {user?.role === "admin" && (
+        <div className="fixed bottom-4 right-4 flex gap-2 opacity-10 hover:opacity-100 transition-opacity duration-300">
+          <Link href="/command-center">
+            <Button size="sm" variant="outline" className="text-xs">
+              Command Center
+            </Button>
+          </Link>
+          <Link href="/command-center-dashboard">
+            <Button size="sm" variant="outline" className="text-xs">
+              Dashboard
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
