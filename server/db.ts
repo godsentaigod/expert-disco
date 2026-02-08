@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, products, orders, orderItems, productPurchases, emailLogs, bundles } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -17,6 +17,10 @@ export async function getDb() {
   }
   return _db;
 }
+
+// ============================================================================
+// USER FUNCTIONS
+// ============================================================================
 
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
@@ -89,4 +93,188 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// ============================================================================
+// PRODUCT FUNCTIONS
+// ============================================================================
+
+export async function getAllProducts() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(products).where(eq(products.active, 1)).orderBy(desc(products.featured));
+}
+
+export async function getProductBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(products).where(eq(products.slug, slug)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getProductById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getProductsByCategory(category: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(products).where(
+    and(eq(products.category, category as any), eq(products.active, 1))
+  );
+}
+
+export async function createProduct(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(products).values(data);
+  return result;
+}
+
+// ============================================================================
+// BUNDLE FUNCTIONS
+// ============================================================================
+
+export async function getAllBundles() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(bundles).where(eq(bundles.active, 1)).orderBy(desc(bundles.featured));
+}
+
+export async function getBundleBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(bundles).where(eq(bundles.slug, slug)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// ============================================================================
+// ORDER FUNCTIONS
+// ============================================================================
+
+export async function createOrder(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(orders).values(data);
+  return result;
+}
+
+export async function getOrderById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getOrderByStripeSessionId(sessionId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(orders).where(eq(orders.stripeSessionId, sessionId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserOrders(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
+}
+
+export async function updateOrderStatus(orderId: number, status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.update(orders).set({ status: status as any }).where(eq(orders.id, orderId));
+}
+
+// ============================================================================
+// ORDER ITEMS FUNCTIONS
+// ============================================================================
+
+export async function createOrderItem(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(orderItems).values(data);
+}
+
+export async function getOrderItems(orderId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+}
+
+// ============================================================================
+// PRODUCT PURCHASE FUNCTIONS
+// ============================================================================
+
+export async function createProductPurchase(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(productPurchases).values(data);
+}
+
+export async function getUserPurchases(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(productPurchases).where(eq(productPurchases.userId, userId));
+}
+
+export async function getUserProductPurchase(userId: number, productId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(productPurchases).where(
+    and(eq(productPurchases.userId, userId), eq(productPurchases.productId, productId))
+  ).limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getPurchaseByToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(productPurchases).where(eq(productPurchases.downloadToken, token)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// ============================================================================
+// EMAIL LOG FUNCTIONS
+// ============================================================================
+
+export async function createEmailLog(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(emailLogs).values(data);
+}
+
+export async function updateEmailLog(id: number, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.update(emailLogs).set(data).where(eq(emailLogs.id, id));
+}
