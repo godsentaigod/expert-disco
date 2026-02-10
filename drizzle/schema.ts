@@ -1,4 +1,4 @@
-import { decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar, json } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, decimal } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
 
 /**
@@ -152,12 +152,155 @@ export type EmailLog = typeof emailLogs.$inferSelect;
 export type InsertEmailLog = typeof emailLogs.$inferInsert;
 
 /**
+ * Agent Conversations - Stores chat history between user and agents
+ */
+export const agentConversations = mysqlTable("agentConversations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }),
+  agentRole: varchar("agentRole", { length: 64 }).notNull(), // e.g., "management", "trend-predictor", etc.
+  status: mysqlEnum("status", ["active", "archived", "completed"]).default("active"),
+  metadata: json("metadata"), // Store custom data like context, tags, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AgentConversation = typeof agentConversations.$inferSelect;
+export type InsertAgentConversation = typeof agentConversations.$inferInsert;
+
+/**
+ * Agent Messages - Individual messages in conversations
+ */
+export const agentMessages = mysqlTable("agentMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversationId").notNull(),
+  role: mysqlEnum("role", ["user", "assistant", "agent", "system"]).notNull(),
+  agentRole: varchar("agentRole", { length: 64 }), // Which agent responded
+  content: text("content").notNull(),
+  metadata: json("metadata"), // Store tokens, model info, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AgentMessage = typeof agentMessages.$inferSelect;
+export type InsertAgentMessage = typeof agentMessages.$inferInsert;
+
+/**
+ * Agent Tasks - Tracks tasks assigned to agents
+ */
+export const agentTasks = mysqlTable("agentTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  conversationId: int("conversationId"),
+  agentRole: varchar("agentRole", { length: 64 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: mysqlEnum("status", ["pending", "in_progress", "completed", "failed", "cancelled"]).default("pending"),
+  priority: mysqlEnum("priority", ["low", "medium", "high", "critical"]).default("medium"),
+  result: text("result"), // Store task result/output
+  errorMessage: text("errorMessage"),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type AgentTask = typeof agentTasks.$inferSelect;
+export type InsertAgentTask = typeof agentTasks.$inferInsert;
+
+/**
+ * API Integrations - Store credentials and configuration for external services
+ */
+export const apiIntegrations = mysqlTable("apiIntegrations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  serviceName: varchar("serviceName", { length: 128 }).notNull(), // e.g., "twitter", "stripe", "sendgrid"
+  displayName: varchar("displayName", { length: 255 }),
+  description: text("description"),
+  isActive: int("isActive").default(1),
+  config: json("config").notNull(), // Encrypted credentials and settings
+  lastTestedAt: timestamp("lastTestedAt"),
+  testStatus: mysqlEnum("testStatus", ["untested", "success", "failed"]).default("untested"),
+  testError: text("testError"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ApiIntegration = typeof apiIntegrations.$inferSelect;
+export type InsertApiIntegration = typeof apiIntegrations.$inferInsert;
+
+/**
+ * Agent Configurations - Store agent-specific settings and behavior
+ */
+export const agentConfigurations = mysqlTable("agentConfigurations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  agentRole: varchar("agentRole", { length: 64 }).notNull(), // e.g., "trend-predictor", "content-creator"
+  displayName: varchar("displayName", { length: 255 }),
+  description: text("description"),
+  systemPrompt: text("systemPrompt"), // Custom system prompt for the agent
+  isActive: int("isActive").default(1),
+  autoApprove: int("autoApprove").default(0), // Whether to auto-approve agent outputs
+  requiredApprovals: int("requiredApprovals").default(1), // Number of approvals needed
+  config: json("config"), // Agent-specific configuration
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AgentConfiguration = typeof agentConfigurations.$inferSelect;
+export type InsertAgentConfiguration = typeof agentConfigurations.$inferInsert;
+
+/**
+ * Workflows - Stores automated workflows created by users or agents
+ */
+export const workflows = mysqlTable("workflows", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  triggerType: varchar("triggerType", { length: 64 }).notNull(), // e.g., "manual", "scheduled", "webhook"
+  triggerConfig: json("triggerConfig"),
+  steps: json("steps").notNull(), // Array of workflow steps
+  isActive: int("isActive").default(1),
+  executionCount: int("executionCount").default(0),
+  lastExecutedAt: timestamp("lastExecutedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Workflow = typeof workflows.$inferSelect;
+export type InsertWorkflow = typeof workflows.$inferInsert;
+
+/**
+ * Workflow Executions - Track individual workflow runs
+ */
+export const workflowExecutions = mysqlTable("workflowExecutions", {
+  id: int("id").autoincrement().primaryKey(),
+  workflowId: int("workflowId").notNull(),
+  userId: int("userId").notNull(),
+  status: mysqlEnum("status", ["pending", "running", "completed", "failed"]).default("pending"),
+  result: json("result"),
+  errorMessage: text("errorMessage"),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
+export type InsertWorkflowExecution = typeof workflowExecutions.$inferInsert;
+
+/**
  * Relations
  */
 export const usersRelations = relations(users, ({ many }) => ({
   orders: many(orders),
   productPurchases: many(productPurchases),
   emailLogs: many(emailLogs),
+  agentConversations: many(agentConversations),
+  agentTasks: many(agentTasks),
+  apiIntegrations: many(apiIntegrations),
+  agentConfigurations: many(agentConfigurations),
+  workflows: many(workflows),
+  workflowExecutions: many(workflowExecutions),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -192,5 +335,65 @@ export const productPurchasesRelations = relations(productPurchases, ({ one }) =
   order: one(orders, {
     fields: [productPurchases.orderId],
     references: [orders.id],
+  }),
+}));
+
+export const agentConversationsRelations = relations(agentConversations, ({ one, many }) => ({
+  user: one(users, {
+    fields: [agentConversations.userId],
+    references: [users.id],
+  }),
+  messages: many(agentMessages),
+  tasks: many(agentTasks),
+}));
+
+export const agentMessagesRelations = relations(agentMessages, ({ one }) => ({
+  conversation: one(agentConversations, {
+    fields: [agentMessages.conversationId],
+    references: [agentConversations.id],
+  }),
+}));
+
+export const agentTasksRelations = relations(agentTasks, ({ one }) => ({
+  user: one(users, {
+    fields: [agentTasks.userId],
+    references: [users.id],
+  }),
+  conversation: one(agentConversations, {
+    fields: [agentTasks.conversationId],
+    references: [agentConversations.id],
+  }),
+}));
+
+export const apiIntegrationsRelations = relations(apiIntegrations, ({ one }) => ({
+  user: one(users, {
+    fields: [apiIntegrations.userId],
+    references: [users.id],
+  }),
+}));
+
+export const agentConfigurationsRelations = relations(agentConfigurations, ({ one }) => ({
+  user: one(users, {
+    fields: [agentConfigurations.userId],
+    references: [users.id],
+  }),
+}));
+
+export const workflowsRelations = relations(workflows, ({ one, many }) => ({
+  user: one(users, {
+    fields: [workflows.userId],
+    references: [users.id],
+  }),
+  executions: many(workflowExecutions),
+}));
+
+export const workflowExecutionsRelations = relations(workflowExecutions, ({ one }) => ({
+  user: one(users, {
+    fields: [workflowExecutions.userId],
+    references: [users.id],
+  }),
+  workflow: one(workflows, {
+    fields: [workflowExecutions.workflowId],
+    references: [workflows.id],
   }),
 }));
