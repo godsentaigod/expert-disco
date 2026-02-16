@@ -34,23 +34,7 @@ export default function AgentCommandCenter() {
   const [, setLocation] = useLocation();
   const { data: user, isLoading: userLoading } = trpc.auth.me.useQuery();
 
-  // Redirect non-admin users
-  if (!userLoading && user?.role !== "admin") {
-    setLocation("/");
-    return null;
-  }
-
-  if (userLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Initialize state hooks BEFORE any conditional returns
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome-1",
@@ -122,6 +106,23 @@ export default function AgentCommandCenter() {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  // NOW check auth and redirect if needed (after all hooks)
+  if (!userLoading && user?.role !== "admin") {
+    setLocation("/");
+    return null;
+  }
+
+  if (userLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
