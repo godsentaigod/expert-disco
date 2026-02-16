@@ -53,7 +53,7 @@ Replace your expensive CTO with AI-powered technical decision-making. This compr
 - Product managers needing technical guidance
 - Small teams without dedicated CTOs
 - Organizations looking to optimize technical decisions`,
-        price: "47.00",
+        price: "397.00",
         category: "cto",
         featured: 1,
         active: 1,
@@ -89,7 +89,7 @@ Replace your Growth Lead with AI-powered growth strategies. This complete toolki
 - Product managers
 - Marketing teams
 - Growth-focused organizations`,
-        price: "47.00",
+        price: "397.00",
         category: "growth",
         featured: 1,
         active: 1,
@@ -125,7 +125,7 @@ Replace your Product Manager with AI-powered product strategy. This comprehensiv
 - Technical leaders without PM experience
 - Small teams without dedicated PMs
 - Organizations optimizing product decisions`,
-        price: "47.00",
+        price: "397.00",
         category: "pm",
         featured: 1,
         active: 1,
@@ -162,7 +162,7 @@ Ready-to-deploy automation blueprints that save 15-25 hours per week. This pack 
 - Operations teams
 - Marketing and sales teams
 - Organizations looking to scale efficiently`,
-        price: "29.00",
+        price: "197.00",
         category: "workflows",
         featured: 1,
         active: 1,
@@ -200,7 +200,7 @@ Your go-to resource for 100+ production-ready prompts. Organized by business fun
 - Content creators and marketers
 - Sales and customer success teams
 - Anyone working with AI language models`,
-        price: "29.00",
+        price: "197.00",
         category: "prompts",
         featured: 1,
         active: 1,
@@ -218,7 +218,7 @@ Your go-to resource for 100+ production-ready prompts. Organized by business fun
         name: "Complete AI Business System",
         slug: "complete-ai-system",
         description: "All 5 products combined for maximum savings",
-        price: "99.00",
+        price: "1297.00",
         productIds: JSON.stringify([1, 2, 3, 4, 5]),
         discount: "45",
         featured: 1,
@@ -228,7 +228,7 @@ Your go-to resource for 100+ production-ready prompts. Organized by business fun
         name: "Core Leadership Bundle",
         slug: "core-leadership",
         description: "CTO, Growth Lead, and Product Manager kits",
-        price: "79.00",
+        price: "997.00",
         productIds: JSON.stringify([1, 2, 3]),
         discount: "35",
         featured: 1,
@@ -238,7 +238,7 @@ Your go-to resource for 100+ production-ready prompts. Organized by business fun
         name: "Automation Bundle",
         slug: "automation-bundle",
         description: "Workflows and Prompt Library for immediate productivity",
-        price: "39.00",
+        price: "297.00",
         productIds: JSON.stringify([4, 5]),
         discount: "25",
         featured: 0,
