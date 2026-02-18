@@ -57,7 +57,7 @@
       "description": "Application logo URL"
     }
   },
-  "buildOutputDirectory": "client/dist",
+
   "regions": ["sfo1"],
   "functions": {
     "server/**/*.ts": {
