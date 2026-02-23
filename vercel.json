@@ -7,13 +7,13 @@
   "outputDirectory": "dist/public",
   "functions": {
     "api/**/*.ts": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs20.x@20"
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/trpc/:path*",
-      "destination": "/api/trpc.ts"
+      "src": "/api/trpc(.*)",
+      "dest": "/api/trpc.ts"
     }
   ]
 }
