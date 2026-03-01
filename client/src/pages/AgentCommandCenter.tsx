@@ -107,22 +107,7 @@ export default function AgentCommandCenter() {
     }
   }, [messages]);
 
-  // NOW check auth and redirect if needed (after all hooks)
-  if (!userLoading && user?.role !== "admin") {
-    setLocation("/");
-    return null;
-  }
-
-  if (userLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // Auth check removed - Command Center is now accessible to all users
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
