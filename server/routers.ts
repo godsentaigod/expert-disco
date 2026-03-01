@@ -8,6 +8,7 @@ import Stripe from "stripe";
 import { conversationRouter, taskRouter, integrationRouter, agentConfigRouter, workflowRouter } from "./agents/persistence-routers";
 import { protonEmailRouter } from "./integrations/proton-email";
 import { smsForwardingRouter } from "./integrations/sms-forwarding";
+import { accountCreatorRouter } from "./agents/account-creator";
 
 const stripeKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeKey ? new Stripe(stripeKey) : null;
@@ -292,6 +293,7 @@ export const appRouter = router({
   workflows: workflowRouter,
   email: protonEmailRouter,
   sms: smsForwardingRouter,
+  accountCreator: accountCreatorRouter,
 });
 
 export type AppRouter = typeof appRouter;
