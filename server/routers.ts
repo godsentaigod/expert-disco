@@ -6,6 +6,8 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import Stripe from "stripe";
 import { conversationRouter, taskRouter, integrationRouter, agentConfigRouter, workflowRouter } from "./agents/persistence-routers";
+import { protonEmailRouter } from "./integrations/proton-email";
+import { smsForwardingRouter } from "./integrations/sms-forwarding";
 
 const stripeKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeKey ? new Stripe(stripeKey) : null;
@@ -288,6 +290,8 @@ export const appRouter = router({
   integrations: integrationRouter,
   agentConfigs: agentConfigRouter,
   workflows: workflowRouter,
+  email: protonEmailRouter,
+  sms: smsForwardingRouter,
 });
 
 export type AppRouter = typeof appRouter;
