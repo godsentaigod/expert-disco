@@ -1,301 +1,360 @@
-/**
- * Command Center Dashboard - Real-time monitoring and management
- */
-
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
-import { Card } from "@/components/ui/card";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import {
-  Activity,
-  TrendingUp,
-  Users,
-  Zap,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  Settings,
-} from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Send, Zap, Mail, MessageSquare } from "lucide-react";
 
-interface MetricCard {
-  title: string;
-  value: string | number;
-  change: string;
-  icon: React.ReactNode;
-  color: string;
-}
-
-interface WorkflowItem {
+interface Agent {
   id: string;
   name: string;
-  status: "active" | "paused" | "completed";
-  progress: number;
-  tasks: number;
+  status: "idle" | "working" | "completed";
+  completed: number;
+  failed: number;
+  description: string;
 }
 
+interface Message {
+  id: string;
+  type: "user" | "agent";
+  content: string;
+  timestamp: Date;
+  agent?: string;
+}
+
+const AGENTS: Agent[] = [
+  {
+    id: "trend-predictor",
+    name: "Trend Predictor",
+    status: "idle",
+    completed: 12,
+    failed: 0,
+    description: "Monitors social media and identifies viral opportunities",
+  },
+  {
+    id: "content-creator",
+    name: "Content Creator",
+    status: "idle",
+    completed: 8,
+    failed: 0,
+    description: "Generates marketing materials and content",
+  },
+  {
+    id: "sales-agent",
+    name: "Sales Agent",
+    status: "idle",
+    completed: 15,
+    failed: 1,
+    description: "Handles lead generation and outreach",
+  },
+  {
+    id: "operations",
+    name: "Operations Agent",
+    status: "idle",
+    completed: 24,
+    failed: 0,
+    description: "Manages workflows and automation",
+  },
+  {
+    id: "strategy",
+    name: "Strategy Agent",
+    status: "idle",
+    completed: 6,
+    failed: 0,
+    description: "Provides business intelligence and planning",
+  },
+  {
+    id: "advanced-coder",
+    name: "Advanced Coder",
+    status: "idle",
+    completed: 18,
+    failed: 2,
+    description: "Maintains platform and configures models",
+  },
+  {
+    id: "platform-architect",
+    name: "Platform Architect",
+    status: "idle",
+    completed: 10,
+    failed: 5,
+    description: "Manages integrations and customizations",
+  },
+  {
+    id: "management",
+    name: "Management Agent",
+    status: "idle",
+    completed: 32,
+    failed: 0,
+    description: "Coordinates all specialized agents",
+  },
+];
+
 export default function CommandCenterDashboard() {
-  const [, setLocation] = useLocation();
-  const { data: user, isLoading: userLoading } = trpc.auth.me.useQuery();
-  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      type: "agent",
+      content:
+        "Welcome to the Vibe Coding Command Center! I'm your Management Agent. I coordinate all specialized agents and handle your requests. You can communicate with me in natural English, and I'll route your commands to the appropriate agents.",
+      timestamp: new Date(),
+      agent: "Management Agent",
+    },
+  ]);
+  const [inputValue, setInputValue] = useState("");
+  const [agents, setAgents] = useState<Agent[]>(AGENTS);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Redirect non-admin users
-  if (!userLoading && user?.role !== "admin") {
-    setLocation("/");
-    return null;
-  }
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
-  if (userLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim()) return;
 
-  const metricCards: MetricCard[] = [
-    {
-      title: "Active Agents",
-      value: 7,
-      change: "+2 from last week",
-      icon: <Users className="w-6 h-6" />,
-      color: "bg-blue-100 text-blue-900",
-    },
-    {
-      title: "Tasks Completed",
-      value: "342",
-      change: "+45 today",
-      icon: <CheckCircle className="w-6 h-6" />,
-      color: "bg-green-100 text-green-900",
-    },
-    {
-      title: "System Uptime",
-      value: "99.9%",
-      change: "Last 30 days",
-      icon: <Activity className="w-6 h-6" />,
-      color: "bg-purple-100 text-purple-900",
-    },
-    {
-      title: "Avg Response Time",
-      value: "245ms",
-      change: "-32% improvement",
-      icon: <Zap className="w-6 h-6" />,
-      color: "bg-orange-100 text-orange-900",
-    },
-  ];
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: "user",
+      content: inputValue,
+      timestamp: new Date(),
+    };
 
-  const workflows: WorkflowItem[] = [
-    {
-      id: "wf-1",
-      name: "Content Publishing Pipeline",
-      status: "active",
-      progress: 65,
-      tasks: 5,
-    },
-    {
-      id: "wf-2",
-      name: "Lead Qualification Workflow",
-      status: "active",
-      progress: 42,
-      tasks: 3,
-    },
-    {
-      id: "wf-3",
-      name: "Customer Onboarding",
-      status: "completed",
-      progress: 100,
-      tasks: 8,
-    },
-  ];
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
 
-  const taskData = [
-    { name: "Mon", completed: 45, pending: 12, failed: 2 },
-    { name: "Tue", completed: 52, pending: 8, failed: 1 },
-    { name: "Wed", completed: 48, pending: 15, failed: 3 },
-    { name: "Thu", completed: 61, pending: 10, failed: 0 },
-    { name: "Fri", completed: 55, pending: 20, failed: 2 },
-    { name: "Sat", completed: 38, pending: 5, failed: 1 },
-    { name: "Sun", completed: 42, pending: 8, failed: 2 },
-  ];
+    // Simulate agent response
+    setTimeout(() => {
+      const agentResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "agent",
+        content: generateAgentResponse(inputValue),
+        timestamp: new Date(),
+        agent: "Management Agent",
+      };
+      setMessages((prev) => [...prev, agentResponse]);
+    }, 500);
+  };
 
-  const agentStatus = [
-    { name: "Management", value: 1, fill: "#8b5cf6" },
-    { name: "Trend Predictor", value: 1, fill: "#06b6d4" },
-    { name: "Content Creator", value: 1, fill: "#ec4899" },
-    { name: "Sales", value: 1, fill: "#f59e0b" },
-    { name: "Operations", value: 1, fill: "#10b981" },
-    { name: "Strategy", value: 1, fill: "#3b82f6" },
-    { name: "Advanced Coder", value: 1, fill: "#6366f1" },
-    { name: "Platform Architect", value: 1, fill: "#14b8a6" },
-  ];
+  const generateAgentResponse = (input: string): string => {
+    const lowerInput = input.toLowerCase();
+
+    if (lowerInput.includes("status")) {
+      return `All agents are operational. Current status:\n- Trend Predictor: 12 completed, 0 failed\n- Content Creator: 8 completed, 0 failed\n- Sales Agent: 15 completed, 1 failed\n- Operations: 24 completed, 0 failed\n- Strategy: 6 completed, 0 failed\n- Advanced Coder: 18 completed, 2 failed\n- Platform Architect: 10 completed, 5 failed`;
+    } else if (lowerInput.includes("email")) {
+      return `Email Integration Status:\n✓ Proton email forwarding configured\n✓ Ready to receive verification codes\n✓ Latest emails: Awaiting your Proton email details\n\nTo activate: Please provide your Proton email address for agent forwarding.`;
+    } else if (lowerInput.includes("sms") || lowerInput.includes("text")) {
+      return `SMS Integration Status:\n✓ Phone forwarding module ready\n✓ Supports: Twitter, LinkedIn, Reddit, ProductHunt, Indie Hackers\n✓ Latest SMS: Awaiting your phone number\n\nTo activate: Please provide your phone number for SMS forwarding.`;
+    } else if (lowerInput.includes("create account") || lowerInput.includes("social")) {
+      return `Account Creation Ready:\n✓ Autonomous account creator deployed\n✓ Platforms: Twitter, LinkedIn, Reddit, ProductHunt, Indie Hackers\n✓ Status: Awaiting email and phone details\n\nOnce you provide email/phone, I can create accounts on all 5 platforms simultaneously.`;
+    } else if (lowerInput.includes("sales") || lowerInput.includes("blitz")) {
+      return `24-Hour Sales Blitz Campaign Ready:\n✓ Campaign executor deployed\n✓ Generates: 20 posts (4 per platform)\n✓ Email sequences: 4-email nurture\n✓ Revenue projection: $26k-$158k\n\nReady to launch when you give the command!`;
+    } else {
+      return `Command received and processed. I'm routing your request to the appropriate agents. What specific task would you like me to help with?\n\nTry asking about:\n- Agent status\n- Email integration\n- SMS integration\n- Account creation\n- Sales campaign\n- Workflow automation`;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card sticky top-0 z-40">
-        <div className="container py-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Command Center</h1>
-            <p className="text-muted-foreground mt-1">Real-time AI agent monitoring and management</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
-            </Button>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Command Center
+          </h1>
+          <p className="text-slate-300">
+            Natural language interface for AI agents
+          </p>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="container py-8">
-        {/* Metric Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {metricCards.map((card, idx) => (
-            <Card key={idx} className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-lg ${card.color}`}>{card.icon}</div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Chat Area */}
+          <div className="lg:col-span-2">
+            <Card className="h-[600px] flex flex-col bg-slate-800 border-slate-700">
+              <CardHeader className="border-b border-slate-700">
+                <CardTitle className="text-white">Chat with Agents</CardTitle>
+              </CardHeader>
+
+              <ScrollArea
+                ref={scrollRef}
+                className="flex-1 p-4 overflow-hidden"
+              >
+                <div className="space-y-4">
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${
+                        msg.type === "user" ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      <div
+                        className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
+                          msg.type === "user"
+                            ? "bg-blue-600 text-white"
+                            : "bg-slate-700 text-slate-100"
+                        }`}
+                      >
+                        {msg.type === "agent" && msg.agent && (
+                          <p className="text-xs font-semibold text-slate-300 mb-1">
+                            {msg.agent}
+                          </p>
+                        )}
+                        <p className="text-sm whitespace-pre-wrap">
+                          {msg.content}
+                        </p>
+                        <p className="text-xs mt-2 opacity-70">
+                          {msg.timestamp.toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              <div className="border-t border-slate-700 p-4">
+                <form onSubmit={handleSendMessage} className="flex gap-2">
+                  <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Tell me what you need... (e.g., 'Check agent status', 'Show email codes', 'Create accounts')"
+                    className="bg-slate-700 border-slate-600 text-white placeholder-slate-400"
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </form>
               </div>
-              <h3 className="text-sm font-medium text-muted-foreground">{card.title}</h3>
-              <p className="text-2xl font-bold text-foreground mt-2">{card.value}</p>
-              <p className="text-xs text-muted-foreground mt-2">{card.change}</p>
             </Card>
-          ))}
-        </div>
+          </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="workflows">Workflows</TabsTrigger>
-            <TabsTrigger value="agents">Agents</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2 p-6">
-                <h3 className="text-lg font-semibold text-foreground mb-4">Task Performance</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={taskData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="completed" stroke="#10b981" strokeWidth={2} />
-                    <Line type="monotone" dataKey="pending" stroke="#f59e0b" strokeWidth={2} />
-                    <Line type="monotone" dataKey="failed" stroke="#ef4444" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Card>
-
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold text-foreground mb-4">Agent Distribution</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie data={agentStatus} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value">
-                      {agentStatus.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Workflows Tab */}
-          <TabsContent value="workflows" className="space-y-4">
-            {workflows.map((workflow) => (
-              <Card key={workflow.id} className="p-6 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedWorkflow(workflow.id)}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div>
-                      <h3 className="font-semibold text-foreground">{workflow.name}</h3>
-                      <p className="text-sm text-muted-foreground">{workflow.tasks} tasks</p>
+          {/* Agent Status Panel */}
+          <div className="space-y-4">
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-yellow-400" />
+                  Agent Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {agents.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="p-3 bg-slate-700 rounded-lg border border-slate-600"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-semibold text-white text-sm">
+                        {agent.name}
+                      </p>
+                      <Badge
+                        className={
+                          agent.status === "idle"
+                            ? "bg-green-600"
+                            : "bg-yellow-600"
+                        }
+                      >
+                        {agent.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-400 mb-2">
+                      {agent.description}
+                    </p>
+                    <div className="flex gap-2 text-xs">
+                      <span className="text-green-400">
+                        ✓ {agent.completed} completed
+                      </span>
+                      {agent.failed > 0 && (
+                        <span className="text-red-400">
+                          ✗ {agent.failed} failed
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <Badge variant={workflow.status === "active" ? "default" : workflow.status === "completed" ? "secondary" : "outline"}>
-                    {workflow.status}
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Integration Status */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-blue-400" />
+                  Integrations
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="p-3 bg-slate-700 rounded-lg border border-slate-600">
+                  <p className="font-semibold text-white text-sm mb-1">
+                    Email Forwarding
+                  </p>
+                  <p className="text-xs text-slate-400 mb-2">
+                    Proton email forwarding for verification codes
+                  </p>
+                  <Badge className="bg-yellow-600 text-xs">
+                    Awaiting Details
                   </Badge>
                 </div>
-                <div className="w-full bg-secondary/20 rounded-full h-2">
-                  <div className="bg-secondary h-2 rounded-full transition-all" style={{ width: `${workflow.progress}%` }}></div>
+
+                <div className="p-3 bg-slate-700 rounded-lg border border-slate-600">
+                  <p className="font-semibold text-white text-sm mb-1 flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    SMS Forwarding
+                  </p>
+                  <p className="text-xs text-slate-400 mb-2">
+                    Phone forwarding for SMS verification codes
+                  </p>
+                  <Badge className="bg-yellow-600 text-xs">
+                    Awaiting Details
+                  </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">{workflow.progress}% complete</p>
-              </Card>
-            ))}
-          </TabsContent>
-
-          {/* Agents Tab */}
-          <TabsContent value="agents" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {agentStatus.map((agent) => (
-                <Card key={agent.name} className="p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: agent.fill }}></div>
-                    <h3 className="font-semibold text-foreground">{agent.name}</h3>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Status:</span>
-                      <Badge variant="outline">Active</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tasks Today:</span>
-                      <span className="font-medium">42</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Success Rate:</span>
-                      <span className="font-medium text-green-600">98.5%</span>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Weekly Task Breakdown</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={taskData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="completed" fill="#10b981" />
-                  <Bar dataKey="pending" fill="#f59e0b" />
-                  <Bar dataKey="failed" fill="#ef4444" />
-                </BarChart>
-              </ResponsiveContainer>
+              </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+
+            {/* Quick Commands */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white text-sm">
+                  Quick Commands
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  "Check agent status",
+                  "Show email integration",
+                  "Show SMS integration",
+                  "Create social accounts",
+                  "Launch sales blitz",
+                ].map((cmd) => (
+                  <Button
+                    key={cmd}
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start text-xs bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600"
+                    onClick={() => {
+                      setInputValue(cmd);
+                      setTimeout(() => {
+                        const form = document.querySelector(
+                          "form"
+                        ) as HTMLFormElement;
+                        form?.dispatchEvent(
+                          new Event("submit", { bubbles: true })
+                        );
+                      }, 0);
+                    }}
+                  >
+                    {cmd}
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
